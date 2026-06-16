@@ -3,6 +3,8 @@ from difflib import get_close_matches
 import pandas as pd
 import os
 from datetime import datetime
+import streamlit as st
+
 
 def listen_for_name(recognizer, mic):
     with mic as source:
@@ -53,30 +55,35 @@ def mark_attendance(matched_row, attendance_file):
            return "duplicate"
     else: 
         attendance = pd.DataFrame(columns=columns)
+        attendance.to_csv(attendance_file, index=False)
         pd.DataFrame([
            {"roll_no": matched_row["roll_no"],
             "name": matched_row["name"], 
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}]).to_csv(attendance_file, mode="a", header=False, index=False)
         return "created and marked"
-        
 
-def main():
-    recognizer = sr.Recognizer()
-    mic = sr.Microphone()
-    attendance_file = "attendance_log.csv"
+
+@st.cache_data
+def load_roaster():
     roster = pd.read_csv("student_roster.csv")
+    return roster
 
+st.title("AttendAI — Voice Attendance")
+
+recognizer = sr.Recognizer()
+mic = sr.Microphone()
+attendance_file = "attendance_log.csv"
+roster = load_roaster()
+
+if st.button("Start Session"):
     text = listen_for_name(recognizer, mic)
     if text is None:
-        return
+        st.error("Could not understand audio")
+    else:
+        matched_row = match_to_roster(text, roster)
+        if matched_row is None:
+            st.warning("No student matched")
 
-    matched_row = match_to_roster(text, roster)
-    if matched_row is None:
-        print("No student matched")
-        return
-
-    status = mark_attendance(matched_row, attendance_file)
-    print(status)
-
-if __name__ == "__main__":
-    main()
+        else:
+            status = mark_attendance(matched_row, attendance_file)
+            st.success(f"{matched_row['name']}: {status}")
