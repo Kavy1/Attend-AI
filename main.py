@@ -119,7 +119,7 @@ attendance_file = "attendance_log.csv"
 roster = load_roaster()
 
 st.subheader("Class Roster")
-st.dataframe(roster)
+st.dataframe(roster, hide_index=True)
 
 
 if st.button("Start Session"):
